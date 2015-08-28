@@ -165,7 +165,8 @@ int blk_queue_init_tags(struct request_queue *q, int depth,
 {
 	int rc;
 
-	BUG_ON(tags && q->queue_tags && tags != q->queue_tags);
+	printk(KERN_ALERT "io-sched: tags: %p, q->queue_tags: %p", tags, q->queue_tags);
+	WARN_ON(tags && q->queue_tags && tags != q->queue_tags);
 
 	if (!tags && !q->queue_tags) {
 		tags = __blk_queue_init_tags(q, depth, alloc_policy);

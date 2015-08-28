@@ -529,6 +529,8 @@ void blk_cleanup_queue(struct request_queue *q)
 {
 	spinlock_t *lock = q->queue_lock;
 
+	printk(KERN_ALERT "io-sched: clean up queue: %p", q);
+
 	/* mark @q DYING, no new request or merges will be allowed afterwards */
 	mutex_lock(&q->sysfs_lock);
 	blk_set_queue_dying(q);
@@ -738,9 +740,16 @@ EXPORT_SYMBOL(blk_alloc_queue_node);
 
 struct request_queue *blk_init_queue(request_fn_proc *rfn, spinlock_t *lock)
 {
-	struct request_queue * rq = blk_init_queue_node(rfn, lock, NUMA_NO_NODE);
- 
-	printk(KERN_ALERT "io-sched: creating request_queue: %p", rq); 
+	static struct request_queue * rq = NULL;
+	
+	if( NULL != rq )
+	{
+		return rq;
+	}
+
+	rq = blk_init_queue_node(rfn, lock, NUMA_NO_NODE);
+
+	printk(KERN_ALERT "io-sched: NEW request_queue created: %p",rq);
 
 	return rq;
 }

@@ -399,6 +399,8 @@ static int osdblk_init_disk(struct osdblk_device *osdev)
 	int rc;
 	u64 obj_size = 0;
 
+	printk(KERN_ALERT "io-sched: osdblk_init_disk");
+
 	/* contact OSD, request size info about the object being mapped */
 	rc = osdblk_get_obj_size(osdev, &obj_size);
 	if (rc)
