@@ -618,6 +618,7 @@ void add_disk(struct gendisk *disk)
 			    exact_match, exact_lock, disk);
 	register_disk(disk);
 	blk_register_queue(disk);
+	printk(KERN_ALERT "io-sched: register disk %s queue: %p, pre_queue %p", disk->disk_name, disk->queue, disk->pre_queue);
 
 	/*
 	 * Take an extra ref on queue which will be put on disk_release()

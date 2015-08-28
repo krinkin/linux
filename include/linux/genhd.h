@@ -187,6 +187,7 @@ struct gendisk {
 
 	const struct block_device_operations *fops;
 	struct request_queue *queue;
+	struct request_queue *pre_queue;
 	void *private_data;
 
 	int flags;

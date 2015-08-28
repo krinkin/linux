@@ -738,7 +738,11 @@ EXPORT_SYMBOL(blk_alloc_queue_node);
 
 struct request_queue *blk_init_queue(request_fn_proc *rfn, spinlock_t *lock)
 {
-	return blk_init_queue_node(rfn, lock, NUMA_NO_NODE);
+	struct request_queue * rq = blk_init_queue_node(rfn, lock, NUMA_NO_NODE);
+ 
+	printk(KERN_ALERT "io-sched: creating request_queue: %p", rq); 
+
+	return rq;
 }
 EXPORT_SYMBOL(blk_init_queue);
 
