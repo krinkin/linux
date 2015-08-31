@@ -702,6 +702,9 @@ static int __init hd_init(void)
 		return -1;
 
 	hd_queue = blk_init_queue(do_hd_request, &hd_lock);
+
+	printk(KERN_ALERT MODULE_NAME "io-sched: hd_init_queue: q=%p lock=%p", hd_queue, &hd_lock);
+
 	if (!hd_queue) {
 		unregister_blkdev(HD_MAJOR, "hd");
 		return -ENOMEM;

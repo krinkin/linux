@@ -24,6 +24,8 @@
 #include <linux/blk-mq.h>
 #include <linux/ratelimit.h>
 
+#include <linux/spinlock.h>
+
 #include <scsi/scsi.h>
 #include <scsi/scsi_cmnd.h>
 #include <scsi/scsi_dbg.h>
@@ -1769,6 +1771,28 @@ static void scsi_request_fn(struct request_queue *q)
 	struct scsi_cmnd *cmd;
 	struct request *req;
 
+	static struct request_queue * first = NULL;
+	static struct request_queue * second = NULL;
+	static int c_first = 0;
+	static int c_second = 0;
+	static int counter = 0;
+
+	if( first == NULL) {
+		first = q;
+		printk(KERN_ALERT "io-sched: first device queue:%p", first);
+	}
+
+	if ( first !=NULL && second == NULL && first != q) {
+		second = q;
+		printk(KERN_ALERT "io-sched: second device queue:%p", second);
+	}
+
+
+	if( counter >=300000 )
+	{
+		c_first = c_second = counter = 0;
+	}
+
 	/*
 	 * To start with, we keep looping until the queue is empty, or until
 	 * the host is no longer able to accept any more requests.
@@ -1776,6 +1800,19 @@ static void scsi_request_fn(struct request_queue *q)
 	shost = sdev->host;
 	for (;;) {
 		int rtn;
+
+		counter ++;
+
+		if( 0!=(counter%2) && q == second)
+			goto out_delay;
+
+		if(q == first)
+			c_first++;
+
+		if(q == second)
+			c_second++;
+
+
 		/*
 		 * get next queueable request.  We do this early to make sure
 		 * that the request is fully prepared even if we cannot
@@ -1857,6 +1894,9 @@ static void scsi_request_fn(struct request_queue *q)
 			goto out_delay;
 		}
 		spin_lock_irq(q->queue_lock);
+		
+		if(0== (counter%3000))
+			printk(KERN_ALERT "io-sched: counter %d/%d, first %d, second %d\n", counter, c_first+c_second, c_first, c_second);
 	}
 
 	return;
@@ -2131,12 +2171,16 @@ static void __scsi_init_queue(struct Scsi_Host *shost, struct request_queue *q)
 	blk_queue_dma_alignment(q, 0x03);
 }
 
+//spinlock_t g_IOSCHED_LOCK = SPIN_LOCK_UNLOCKED;
+//EXPORT_SYMBOL(g_IOSCHED_LOCK);
+
 struct request_queue *__scsi_alloc_queue(struct Scsi_Host *shost,
 					 request_fn_proc *request_fn)
 {
-	struct request_queue *q;
+	struct request_queue *q = NULL;
 
 	q = blk_init_queue(request_fn, NULL);
+
 	if (!q)
 		return NULL;
 	__scsi_init_queue(shost, q);
@@ -2148,7 +2192,9 @@ struct request_queue *scsi_alloc_queue(struct scsi_device *sdev)
 {
 	struct request_queue *q;
 
+	printk(KERN_ALERT "io-sched: scsi_alloc_queue sdev: %p", sdev);
 	q = __scsi_alloc_queue(sdev->host, scsi_request_fn);
+
 	if (!q)
 		return NULL;
 

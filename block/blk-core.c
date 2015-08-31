@@ -741,15 +741,11 @@ EXPORT_SYMBOL(blk_alloc_queue_node);
 struct request_queue *blk_init_queue(request_fn_proc *rfn, spinlock_t *lock)
 {
 	static struct request_queue * rq = NULL;
+ 
 	
-	if( NULL != rq )
-	{
-		return rq;
-	}
-
 	rq = blk_init_queue_node(rfn, lock, NUMA_NO_NODE);
 
-	printk(KERN_ALERT "io-sched: NEW request_queue created: %p",rq);
+	printk(KERN_ALERT "io-sched: NEW request_queue created: %p, spinlock=%p, caller:%pS", rq, lock,__builtin_return_address(0));
 
 	return rq;
 }
@@ -794,8 +790,13 @@ blk_init_allocated_queue(struct request_queue *q, request_fn_proc *rfn,
 	q->queue_flags		|= QUEUE_FLAG_DEFAULT;
 
 	/* Override internal queue lock with supplied lock pointer */
-	if (lock)
+	if (lock) {
+		printk(KERN_ALERT "io-sched: blk_init_allocated_queue, OVERRIDE LOCK *p, lock");
 		q->queue_lock		= lock;
+	}
+	else {
+		printk(KERN_ALERT "io-sched: blk_init_allocated_queue, No Lock Provided");
+	}
 
 	/*
 	 * This also sets hw/phys segments, boundary and size

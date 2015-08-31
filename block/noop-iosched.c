@@ -8,8 +8,11 @@
 #include <linux/slab.h>
 #include <linux/init.h>
 
+
+
 struct noop_data {
 	struct list_head queue;
+	
 };
 
 static void noop_merged_requests(struct request_queue *q, struct request *rq,
@@ -34,7 +37,26 @@ static int noop_dispatch(struct request_queue *q, int force)
 
 static void noop_add_request(struct request_queue *q, struct request *rq)
 {
+	static int counter = 0;
+	static int sda = 0;
+        static int sdb = 0;
+
+	const char* diskname = (rq->rq_disk)->disk_name;
+
 	struct noop_data *nd = q->elevator->elevator_data;
+
+
+	if(!strcmp(diskname,"sda"))
+		sda++;
+	if(!strcmp(diskname,"sdb"))
+		sdb++;
+	counter ++;
+
+//	if(0 == (counter%1000))
+//		printk(KERN_ALERT "io-sched: [noop] %d %d %d :current_q:%p\n",counter, sda, sdb, q);
+
+	if(counter >=500000)
+		counter = 0;
 
 	list_add_tail(&rq->queuelist, &nd->queue);
 }
