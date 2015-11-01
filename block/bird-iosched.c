@@ -10,7 +10,12 @@
 
 struct bird_data {
 	struct list_head queue;
+	int local_io;
+	int instance_id;
 };
+
+static int total_io = 0;
+static int instances = 0;
 
 static void bird_merged_requests(struct request_queue *q, struct request *rq,
 				 struct request *next)
@@ -27,6 +32,13 @@ static int bird_dispatch(struct request_queue *q, int force)
 		rq = list_entry(nd->queue.next, struct request, queuelist);
 		list_del_init(&rq->queuelist);
 		elv_dispatch_sort(q, rq);
+		nd->local_io += 1;
+		total_io += 1;
+		if (nd->local_io % 50 == 0){
+			if (nd->local_io <= 5000){
+				printk(KERN_INFO "Local io [%d] %d Total io %d\n", nd->instance_id, nd->local_io, total_io);
+			}			
+		}
 		return 1;
 	}
 	return 0;
@@ -73,6 +85,11 @@ static int bird_init_queue(struct request_queue *q, struct elevator_type *e)
 		kobject_put(&eq->kobj);
 		return -ENOMEM;
 	}
+	
+	nd->local_io = 0;
+	nd->instance_id = instances;
+	instances++;
+	
 	eq->elevator_data = nd;
 
 	INIT_LIST_HEAD(&nd->queue);
