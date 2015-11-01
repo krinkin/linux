@@ -12,6 +12,13 @@ config IOSCHED_NOOP
 	  that do their own scheduling and require only minimal assistance from
 	  the kernel.
 
+config IOSCHED_BIRD
+	bool
+	default y
+	---help---
+	  It is new generation scheduler for your linux device
+
+
 config IOSCHED_DEADLINE
 	tristate "Deadline I/O scheduler"
 	default y
@@ -52,6 +59,9 @@ choice
 	config DEFAULT_CFQ
 		bool "CFQ" if IOSCHED_CFQ=y
 
+	config DEFAULT_BIRD
+		bool "Bird"
+
 	config DEFAULT_NOOP
 		bool "No-op"
 
@@ -62,6 +72,7 @@ config DEFAULT_IOSCHED
 	default "deadline" if DEFAULT_DEADLINE
 	default "cfq" if DEFAULT_CFQ
 	default "noop" if DEFAULT_NOOP
+	default "bird" if DEFAULT_BIRD
 
 endmenu
 
