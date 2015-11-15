@@ -7,19 +7,16 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/init.h>
-//#include <linux/genhd.h>
-
 
 struct bird_data {
-	struct list_head queue;
 	int local_io;
 	int instance_id;
-	char devicename[DISK_NAME_LEN];
 };
 
-static int total_io = 0;
-static int instances = 0;
-static struct list_head common_queue;
+static int bird_total_io = 0;
+static int bird_instances = 0;
+static struct list_head bird_common_queue;
+static int bird_is_init = 0;
 
 static void bird_merged_requests(struct request_queue *q, struct request *rq,
 				 struct request *next)
@@ -31,16 +28,16 @@ static int bird_dispatch(struct request_queue *q, int force)
 {
 	struct bird_data *nd = q->elevator->elevator_data;
 
-	if (!list_empty(&common_queue)) {
+	if (!list_empty(&bird_common_queue)) {
 		struct request *rq;
-		rq = list_entry(common_queue.next, struct request, queuelist);
+		rq = list_entry(bird_common_queue.next, struct request, queuelist);
 		list_del_init(&rq->queuelist);
 		elv_dispatch_sort(q, rq);
 		nd->local_io += 1;
-		total_io += 1;
+		bird_total_io += 1;
 		if (nd->local_io % 50 == 0){
 			if (nd->local_io <= 5000){
-				printk(KERN_INFO "Local io [%d] [%s] %d Total io %d\n", nd->instance_id,  nd->devicename, nd->local_io, total_io);
+				printk(KERN_INFO "Local io [%d] %d Total io %d\n", nd->instance_id, nd->local_io, bird_total_io);
 			}			
 		}
 		return 1;
@@ -51,9 +48,8 @@ static int bird_dispatch(struct request_queue *q, int force)
 static void bird_add_request(struct request_queue *q, struct request *rq)
 {
 	struct bird_data *nd = q->elevator->elevator_data;
-	const char* diskname = (rq->rq_disk)->disk_name;
 
-	list_add_tail(&rq->queuelist, &common_queue);
+	list_add_tail(&rq->queuelist, &bird_common_queue);
 }
 
 static struct request *
@@ -61,7 +57,7 @@ bird_former_request(struct request_queue *q, struct request *rq)
 {
 	struct bird_data *nd = q->elevator->elevator_data;
 
-	if (rq->queuelist.prev == &common_queue)
+	if (rq->queuelist.prev == &bird_common_queue)
 		return NULL;
 	return list_entry(rq->queuelist.prev, struct request, queuelist);
 }
@@ -71,7 +67,7 @@ bird_latter_request(struct request_queue *q, struct request *rq)
 {
 	struct bird_data *nd = q->elevator->elevator_data;
 
-	if (rq->queuelist.next == &common_queue)
+	if (rq->queuelist.next == &bird_common_queue)
 		return NULL;
 	return list_entry(rq->queuelist.next, struct request, queuelist);
 }
@@ -92,14 +88,15 @@ static int bird_init_queue(struct request_queue *q, struct elevator_type *e)
 	}
 	
 	nd->local_io = 0;
-	nd->instance_id = instances;
-	instances++;
-//((q->boundary_rq)->rq_disk)->disk_name
-	strcpy(nd->devicename, "devname");
+	nd->instance_id = bird_instances;
+	bird_instances++;
 	
 	eq->elevator_data = nd;
 
-	INIT_LIST_HEAD(&common_queue);
+	if (bird_is_init){
+		INIT_LIST_HEAD(&bird_common_queue);
+		bird_is_init = 1;
+	}
 
 	spin_lock_irq(q->queue_lock);
 	q->elevator = eq;
@@ -111,7 +108,7 @@ static void bird_exit_queue(struct elevator_queue *e)
 {
 	struct bird_data *nd = e->elevator_data;
 
-	BUG_ON(!list_empty(&common_queue));
+	BUG_ON(!list_empty(&bird_common_queue));
 	kfree(nd);
 }
 
