@@ -18,6 +18,19 @@ struct bird_data {
 static int total_io = 0;
 static int instances = 0;
 
+static char *
+bird_strncpy(char *dest, const char *src, int n)
+{
+    int i;
+
+   for (i = 0; i < n && src[i] != '\0'; i++)
+        dest[i] = src[i];
+    for ( ; i < n; i++)
+        dest[i] = '\0';
+
+   return dest;
+}
+
 static void bird_merged_requests(struct request_queue *q, struct request *rq,
 				 struct request *next)
 {
@@ -38,8 +51,8 @@ static int bird_dispatch(struct request_queue *q, int force)
 		nd->local_io += 1;
 		total_io += 1;
 
-		strncpu(diskname, rq->rq_disk ? rq->rq_disk->disk_name : "unknown", sizeof(diskname) - 1);
-		diskname[sizeof(diskname) - 1] = '\0';
+		bird_strncpy(diskname, rq->rq_disk ? rq->rq_disk->disk_name : "unknown", sizeof(diskname)-1);
+		diskname[sizeof(diskname)-1] = '\0';
 
 		if (nd->local_io % 50 == 0){
 			if (nd->local_io <= 5000){
