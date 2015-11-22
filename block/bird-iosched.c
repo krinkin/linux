@@ -7,6 +7,7 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/init.h>
+#include <linux/string.h>
 
 struct bird_data {
 	struct list_head queue;
@@ -29,14 +30,20 @@ static int bird_dispatch(struct request_queue *q, int force)
 
 	if (!list_empty(&nd->queue)) {
 		struct request *rq;
+		char diskname[DISK_NAME_LEN+1];
+
 		rq = list_entry(nd->queue.next, struct request, queuelist);
 		list_del_init(&rq->queuelist);
 		elv_dispatch_sort(q, rq);
 		nd->local_io += 1;
 		total_io += 1;
+
+		strncpu(diskname, rq->rq_disk ? rq->rq_disk->disk_name : "unknown", sizeof(diskname) - 1);
+		diskname[sizeof(diskname) - 1] = '\0';
+
 		if (nd->local_io % 50 == 0){
 			if (nd->local_io <= 5000){
-				printk(KERN_INFO "Local io [%d] %d From %s Total io %d\n", nd->instance_id, nd->local_io, rq->rq_disk ? rq->rq_disk->disk_name : "???", total_io);
+				printk(KERN_INFO "Local io [%d] %d From %s Total io %d\n", nd->instance_id, nd->local_io, diskname, total_io);
 			}			
 		}
 		return 1;
