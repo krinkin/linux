@@ -93,7 +93,7 @@ static int bird_init_queue(struct request_queue *q, struct elevator_type *e)
 	
 	eq->elevator_data = nd;
 
-	if (bird_is_init){
+	if (!bird_is_init){
 		INIT_LIST_HEAD(&bird_common_queue);
 		bird_is_init = 1;
 	}
