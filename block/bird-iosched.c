@@ -95,10 +95,19 @@ static int bird_init_queue(struct request_queue *q, struct elevator_type *e)
 {
 	struct bird_data *nd;
 	struct elevator_queue *eq;
+	static struct elevator_queue *common_queue = NULL;
+	bool first_init = common_queue == NULL;
 
-	eq = elevator_alloc(q, e);
-	if (!eq)
-		return -ENOMEM;
+	
+	if (first_init){
+		eq = elevator_alloc(q, e);
+		if (!eq)
+			return -ENOMEM;
+		common_queue = eq;
+	}
+	else{
+		eq = common_queue;
+	}
 
 	nd = kmalloc_node(sizeof(*nd), GFP_KERNEL, q->node);
 	if (!nd) {
