@@ -133,7 +133,7 @@ static void bird_exit_queue(struct elevator_queue *e)
 {
 	struct bird_data *nd = e->elevator_data;
 
-	BUG_ON(!list_empty(&nd->queue));
+	WARN_ON(!list_empty(&nd->queue));
 	kfree(nd);
 }
 
