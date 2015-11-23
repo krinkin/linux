@@ -107,6 +107,7 @@ static int bird_init_queue(struct request_queue *q, struct elevator_type *e)
 	}
 	else{
 		eq = common_queue;
+		kobject_get(&eq->kobj);
 	}
 
 	nd = kmalloc_node(sizeof(*nd), GFP_KERNEL, q->node);
