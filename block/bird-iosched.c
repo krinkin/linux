@@ -18,6 +18,7 @@ static int local_io[23];
 static int pending_io[23];
 static int priority[23];
 static int lock_io[23];
+
 static int total_io = 0;
 static int instances = 0;
 
@@ -44,27 +45,7 @@ static int bird_dispatch(struct request_queue *q, int force)
 {
 	struct bird_data *nd = q->elevator->elevator_data;
 	int count_io = 0;
-	int available_io = 0;
-	int i = 0;
-	int have_waited_io = 0;
-	if (lock_io[nd->instance_id]){
-		for (; i < instances; ++i){
-			if (!lock_io[i] && (pending_io > 0)){
-				have_waited_io = 1;
-				break;
-			}
-		}
-		if (have_waited_io){
-			return 0;
-		}
-		else{
-			for (; i < instances; ++i){
-				lock_io[i] = 0;
-			}
-		}
-	}
-	
-	for(;count_io < available_io; ++count_io){
+	for(;count_io < priority[nd->instance_id]; ++count_io){
 		if (!list_empty(&nd->queue)) {
 			struct request *rq;
 			char diskname[DISK_NAME_LEN+1];
@@ -73,7 +54,6 @@ static int bird_dispatch(struct request_queue *q, int force)
 			list_del_init(&rq->queuelist);
 			elv_dispatch_sort(q, rq);
 			local_io[nd->instance_id] += 1;
-			--pending_io[nd->instance_id];
 			total_io += 1;
 
 			bird_strncpy(diskname, rq->rq_disk ? rq->rq_disk->disk_name : "unknown", sizeof(diskname)-1);
@@ -89,7 +69,6 @@ static int bird_dispatch(struct request_queue *q, int force)
 			break;
 		}
 	}
-	lock_io[nd->instance_id] = 1;
 	return count_io;
 }
 
@@ -98,7 +77,6 @@ static void bird_add_request(struct request_queue *q, struct request *rq)
 	struct bird_data *nd = q->elevator->elevator_data;
 
 	list_add_tail(&rq->queuelist, &nd->queue);
-	++pending_io[nd->instance_id];
 }
 
 static struct request *
