@@ -45,6 +45,26 @@ static int bird_dispatch(struct request_queue *q, int force)
 {
 	struct bird_data *nd = q->elevator->elevator_data;
 	int count_io = 0;
+	int have_blocks = 0;
+	int i;
+	if (lock_io[nd->instance_id] == 1){
+		for (; i < instances; ++i){
+			if ((lock_io[i] == 0) && (pending_io[i] > 0)){
+				have_blocks = 1;
+				break;
+			}
+		}
+		if (have_blocks == 0){
+			i = 0;
+			for (; i < instances; ++i){
+				lock_io[i] = 0;
+			}
+		}
+		else{
+			return 0;
+		}
+	}
+	
 	for(;count_io < priority[nd->instance_id]; ++count_io){
 		if (!list_empty(&nd->queue)) {
 			struct request *rq;
@@ -60,8 +80,8 @@ static int bird_dispatch(struct request_queue *q, int force)
 			bird_strncpy(diskname, rq->rq_disk ? rq->rq_disk->disk_name : "unknown", sizeof(diskname)-1);
 			diskname[sizeof(diskname)-1] = '\0';
 
-			if (local_io[nd->instance_id] % 50 == 0){
-				if (local_io[nd->instance_id] <= 5000){
+			if (local_io[nd->instance_id] % 1000 == 0){
+				if (local_io[nd->instance_id] <= 500000){
 					printk(KERN_INFO "Local io [%d] %d From %s Total io %d Current = %d Prior %d Remaind %d\n", nd->instance_id, local_io[nd->instance_id], diskname, total_io, count_io, priority[nd->instance_id], pending_io[nd->instance_id]);
 				}			
 			}
@@ -70,6 +90,7 @@ static int bird_dispatch(struct request_queue *q, int force)
 			break;
 		}
 	}
+	lock_io[nd->instance_id] = 1;
 	return count_io;
 }
 
