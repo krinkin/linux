@@ -19,6 +19,7 @@ static int pending_io[23];
 static int priority[23];
 static int lock_io[23];
 
+
 static int total_io = 0;
 static int instances = 0;
 
@@ -39,13 +40,17 @@ static void bird_merged_requests(struct request_queue *q, struct request *rq,
 				 struct request *next)
 {
 	list_del_init(&next->queuelist);
+	if (q != NULL){
+		struct bird_data *nd = q->elevator->elevator_data;
+		pending_io[nd->instance_id] += 1;		
+	}
 }
 
 static int bird_dispatch(struct request_queue *q, int force)
 {
 	struct bird_data *nd = q->elevator->elevator_data;
 	int count_io = 0;
-	for(;count_io < priority[nd->instance_id]; ++count_io){
+	for(;count_io < 1; ++count_io){
 		if (!list_empty(&nd->queue)) {
 			struct request *rq;
 			char diskname[DISK_NAME_LEN+1];
@@ -77,6 +82,8 @@ static void bird_add_request(struct request_queue *q, struct request *rq)
 	struct bird_data *nd = q->elevator->elevator_data;
 
 	list_add_tail(&rq->queuelist, &nd->queue);
+
+	pending_io[nd->instance_id] += 1;
 }
 
 static struct request *
