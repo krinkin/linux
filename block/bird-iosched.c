@@ -60,13 +60,14 @@ static int bird_dispatch(struct request_queue *q, int force)
 			elv_dispatch_sort(q, rq);
 			local_io[nd->instance_id] += 1;
 			total_io += 1;
+			pending_io[nd->instance_id] -= 1;
 
 			bird_strncpy(diskname, rq->rq_disk ? rq->rq_disk->disk_name : "unknown", sizeof(diskname)-1);
 			diskname[sizeof(diskname)-1] = '\0';
 
 			if (local_io[nd->instance_id] % 50 == 0){
 				if (local_io[nd->instance_id] <= 5000){
-					printk(KERN_INFO "Local io [%d] %d From %s Total io %d Current = %d Prior \n", nd->instance_id, local_io[nd->instance_id], diskname, total_io, count_io, priority[nd->instance_id]);
+					printk(KERN_INFO "Local io [%d] %d From %s Total io %d pending_io = %d Prior=%d \n", nd->instance_id, local_io[nd->instance_id], diskname, total_io, pending_io[nd->instance_id], priority[nd->instance_id]);
 				}			
 			}
 		}
