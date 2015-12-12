@@ -42,40 +42,37 @@ static void bird_merged_requests(struct request_queue *q, struct request *rq,
 	list_del_init(&next->queuelist);
 	if (q != NULL){
 		struct bird_data *nd = q->elevator->elevator_data;
-		pending_io[nd->instance_id] += 1;		
+		pending_io[nd->instance_id] -= 1;
 	}
 }
 
 static int bird_dispatch(struct request_queue *q, int force)
 {
 	struct bird_data *nd = q->elevator->elevator_data;
-	int count_io = 0;
-	for(;count_io < 1; ++count_io){
-		if (!list_empty(&nd->queue)) {
-			struct request *rq;
-			char diskname[DISK_NAME_LEN+1];
 
-			rq = list_entry(nd->queue.next, struct request, queuelist);
-			list_del_init(&rq->queuelist);
-			elv_dispatch_sort(q, rq);
-			local_io[nd->instance_id] += 1;
-			total_io += 1;
-			pending_io[nd->instance_id] -= 1;
+	if (!list_empty(&nd->queue)) {
+		struct request *rq;
+		char diskname[DISK_NAME_LEN+1];
 
-			bird_strncpy(diskname, rq->rq_disk ? rq->rq_disk->disk_name : "unknown", sizeof(diskname)-1);
-			diskname[sizeof(diskname)-1] = '\0';
+		rq = list_entry(nd->queue.next, struct request, queuelist);
+		list_del_init(&rq->queuelist);
+		elv_dispatch_sort(q, rq);
+		local_io[nd->instance_id] += 1;
+		total_io += 1;
+		pending_io[nd->instance_id] -= 1;
 
-			if (local_io[nd->instance_id] % 50 == 0){
-				if (local_io[nd->instance_id] <= 5000){
-					printk(KERN_INFO "Local io [%d] %d From %s Total io %d pending_io = %d Prior=%d \n", nd->instance_id, local_io[nd->instance_id], diskname, total_io, pending_io[nd->instance_id], priority[nd->instance_id]);
-				}			
-			}
+		bird_strncpy(diskname, rq->rq_disk ? rq->rq_disk->disk_name : "unknown", sizeof(diskname)-1);
+		diskname[sizeof(diskname)-1] = '\0';
+
+		if (local_io[nd->instance_id] % 100 == 0){
+			if (local_io[nd->instance_id] <= 50000){
+				printk(KERN_INFO "Local io [%d] %d From %s Total io %d pending_io = %d Prior=%d \n", nd->instance_id, local_io[nd->instance_id], diskname, total_io, pending_io[nd->instance_id], priority[nd->instance_id]);
+			}			
 		}
-		else{
-			break;
-		}
+		return 1;
 	}
-	return count_io;
+	
+	return 0;
 }
 
 static void bird_add_request(struct request_queue *q, struct request *rq)
