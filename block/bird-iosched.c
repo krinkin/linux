@@ -85,6 +85,9 @@ static int bird_dispatch(struct request_queue *q, int force)
 
 		first_cmp = local_sum;
 		first_cmp *= prior_sum;
+		
+		second_cmp = gr_prior_sum;
+		second_cmp *= pending_io_sum;
 
 
 
