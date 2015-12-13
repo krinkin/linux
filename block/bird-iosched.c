@@ -57,6 +57,9 @@ static int bird_dispatch(struct request_queue *q, int force)
 		int pending_io_sum = 0;
 		int prior_iterator = 0;
 		int gr_prior_sum = 0;
+		int first_cmp;
+		int second_cmp;
+	
 		struct request *rq;
 		char diskname[DISK_NAME_LEN+1];
 
@@ -79,6 +82,11 @@ static int bird_dispatch(struct request_queue *q, int force)
 				gr_prior_sum  += priority[prior_iterator];
 			}
 		}
+
+		first_cmp = local_sum;
+		first_cmp *= prior_sum;
+
+
 
 		rq = list_entry(nd->queue.next, struct request, queuelist);
 		list_del_init(&rq->queuelist);
