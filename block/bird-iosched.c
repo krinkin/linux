@@ -51,6 +51,8 @@ static int bird_dispatch(struct request_queue *q, int force)
 	struct bird_data *nd = q->elevator->elevator_data;
 
 	if (!list_empty(&nd->queue)) {
+		int prior_sum = 0;
+		int prior_iterator;
 		struct request *rq;
 		char diskname[DISK_NAME_LEN+1];
 
@@ -60,13 +62,17 @@ static int bird_dispatch(struct request_queue *q, int force)
 		local_io[nd->instance_id] += 1;
 		total_io += 1;
 		pending_io[nd->instance_id] -= 1;
+		
+		for (prior_iterator = 0; prior_iterator < instances; ++prior_iterator){
+			prior_sum += priority[prior_iterator];
+		}
 
 		bird_strncpy(diskname, rq->rq_disk ? rq->rq_disk->disk_name : "unknown", sizeof(diskname)-1);
 		diskname[sizeof(diskname)-1] = '\0';
 
 		if (local_io[nd->instance_id] % 100 == 0){
 			if (local_io[nd->instance_id] <= 50000){
-				printk(KERN_INFO "Local io [%d] %d From %s Total io %d pending_io = %d Prior=%d \n", nd->instance_id, local_io[nd->instance_id], diskname, total_io, pending_io[nd->instance_id], priority[nd->instance_id]);
+				printk(KERN_INFO "Local io [%d] %d From %s Total io %d pending_io = %d Prior=%d PriorSum = %d \n", nd->instance_id, local_io[nd->instance_id], diskname, total_io, pending_io[nd->instance_id], priority[nd->instance_id], prior_sum);
 			}			
 		}
 		return 1;
