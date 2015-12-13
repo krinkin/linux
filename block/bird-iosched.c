@@ -54,12 +54,17 @@ static int bird_dispatch(struct request_queue *q, int force)
 	if (!list_empty(&nd->queue)) {
 		int prior_sum = 0;
 		int local_sum = 0;
-		int prior_iterator;
+		int pending_io_sum = 0;
+		int prior_iterator = 0;
 		struct request *rq;
 		char diskname[DISK_NAME_LEN+1];
 
 		for (prior_iterator = 0; prior_iterator < instances; ++prior_iterator){
 			prior_sum += priority[prior_iterator];
+		}
+		
+		for (prior_iterator = 0; prior_iterator < instances; ++prior_iterator){
+			pending_io_sum += pending_io[prior_iterator];
 		}
 
 		for (prior_iterator = 0; prior_iterator < instances; ++prior_iterator){
@@ -137,6 +142,7 @@ static int bird_init_queue(struct request_queue *q, struct elevator_type *e)
 	nd->instance_id = instances;
 	priority[nd->instance_id] = (instances+1)*2;
 	group_id[nd->instance_id] = instances;
+	pending_io[nd->instance_id] = 0;
 	instances++;
 	
 	eq->elevator_data = nd;
