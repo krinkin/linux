@@ -63,17 +63,8 @@ static int bird_dispatch(struct request_queue *q, int force)
 		total_io += 1;
 		pending_io[nd->instance_id] -= 1;
 		
-		if (local_io[nd->instance_id] % 1000 == 0){
-			for (prior_iterator = 0; prior_iterator < instances; ++prior_iterator){
-				prior_sum += priority[prior_iterator];
-				printk(KERN_INFO "id=%d, prior=%d \n", prior_iterator, priority[prior_iterator]);
-			}
-		}
-		else{
-			for (prior_iterator = 0; prior_iterator < instances; ++prior_iterator){
-				prior_sum += priority[prior_iterator];
-				printk(KERN_INFO "id=%d, prior=%d \n", prior_iterator, priority[prior_iterator]);
-			}
+		for (prior_iterator = 0; prior_iterator < instances; ++prior_iterator){
+			prior_sum += priority[prior_iterator];
 		}
 
 		bird_strncpy(diskname, rq->rq_disk ? rq->rq_disk->disk_name : "unknown", sizeof(diskname)-1);
