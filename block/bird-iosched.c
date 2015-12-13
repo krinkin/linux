@@ -52,12 +52,33 @@ static int bird_dispatch(struct request_queue *q, int force)
 	struct bird_data *nd = q->elevator->elevator_data;
 
 	if (!list_empty(&nd->queue)) {
-		int prior_sum = 0;
-		int local_sum = 0;
+		int total_prior_sum = 0;
+		int group_local_io_sum = 0;
+		int group_total_prior_sum = 0;
 		int prior_iterator;
+		int pending_io_sum;
+		int first_cmp;
+		int second_cmp;
 		struct request *rq;
 		char diskname[DISK_NAME_LEN+1];
 
+		for (prior_iterator = 0; prior_iterator < instances; ++prior_iterator){
+			total_prior_sum += priority[prior_iterator];
+			pending_io_sum += pending_io[nd->instance_id];
+		}
+
+		for (prior_iterator = 0; prior_iterator < instances; ++prior_iterator){
+			if (group_id[prior_iterator] == group_id[nd->instance_id]){
+				group_local_io_sum += local_io[prior_iterator];
+				group_total_prior_sum  += priority[prior_iterator];
+			}
+		}
+		
+		
+		first_cmp = group_local_io_sum * total_prior_sum;
+		second_cmp = group_total_prior_sum * priority[group_id[nd->instance_id]] * pending_io_sum;
+		
+		
 		rq = list_entry(nd->queue.next, struct request, queuelist);
 		list_del_init(&rq->queuelist);
 		elv_dispatch_sort(q, rq);
@@ -65,22 +86,14 @@ static int bird_dispatch(struct request_queue *q, int force)
 		total_io += 1;
 		pending_io[nd->instance_id] -= 1;
 		
-		for (prior_iterator = 0; prior_iterator < instances; ++prior_iterator){
-			prior_sum += priority[prior_iterator];
-		}
-
-		for (prior_iterator = 0; prior_iterator < instances; ++prior_iterator){
-			if (group_id[prior_iterator] == group_id[nd->instance_id]){
-				local_sum += local_io[prior_iterator];
-			}
-		}
+		
 
 		bird_strncpy(diskname, rq->rq_disk ? rq->rq_disk->disk_name : "unknown", sizeof(diskname)-1);
 		diskname[sizeof(diskname)-1] = '\0';
 
 		if (local_io[nd->instance_id] % 100 == 0){
 			if (local_io[nd->instance_id] <= 50000){
-				printk(KERN_INFO "Local io [%d] %d From %s Total io %d pending_io = %d Prior=%d PriorSum = %d LocalSum = %d\n", nd->instance_id, local_io[nd->instance_id], diskname, total_io, pending_io[nd->instance_id], priority[nd->instance_id], prior_sum, local_sum);
+				printk(KERN_INFO "Local io [%d] %d From %s Total io %d pending_io = %d Prior=%d PriorSum = %d LocalSum = %d First=%d Second = %d\n", nd->instance_id, local_io[nd->instance_id], diskname, total_io, pending_io[nd->instance_id], priority[nd->instance_id], total_prior_sum, group_local_io_sum, first_cmp, second_cmp);
 			}			
 		}
 		return 1;
