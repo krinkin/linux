@@ -48,6 +48,7 @@ static void bird_merged_requests(struct request_queue *q, struct request *rq,
 
 static int first_cmp;
 static int second_cmp;
+static int timerFirstValue = 1000;
 static int timerPrior = 1;
 
 static int bird_dispatch(struct request_queue *q, int force)
@@ -58,12 +59,18 @@ static int bird_dispatch(struct request_queue *q, int force)
 	int pending_io_sum = 0;
 	int prior_iterator = 0;
 	int gr_prior_sum = 0;
+	int group_pending_sum = 0;
 	first_cmp = 0;
 	second_cmp = 0;
 	timerPrior -= 1;
 
-	if (timerPrior <= 0)
-		timerPrior = instances;
+	if (timerPrior <= 0){
+		timerPrior = timerFirstValue;
+		total_io = 0;
+		for (prior_iterator = 0; prior_iterator < instances; ++prior_iterator){
+			local_io[prior_iterator] = 0;
+		}
+	}
 	
 
 	if (!list_empty(&nd->queue)) {
@@ -72,7 +79,9 @@ static int bird_dispatch(struct request_queue *q, int force)
 		char diskname[DISK_NAME_LEN+1];
 
 		for (prior_iterator = 0; prior_iterator < instances; ++prior_iterator){
-			prior_sum += priority[prior_iterator];
+			if (pending_io[prior_iterator] > 0){
+				prior_sum += priority[prior_iterator];
+			}
 		}
 		
 		for (prior_iterator = 0; prior_iterator < instances; ++prior_iterator){
@@ -82,6 +91,7 @@ static int bird_dispatch(struct request_queue *q, int force)
 		for (prior_iterator = 0; prior_iterator < instances; ++prior_iterator){
 			if (group_id[prior_iterator] == group_id[nd->instance_id]){
 				local_sum += local_io[prior_iterator];
+				group_pending_sum +=	 pending_io[prior_iterator];
 			}
 		}
 		
@@ -92,11 +102,13 @@ static int bird_dispatch(struct request_queue *q, int force)
 		}
 
 		first_cmp = local_sum;
+		first_cmp *= pending_io_sum;
 		first_cmp *= prior_sum;
 		
+		
 		second_cmp = gr_prior_sum;
+		second_cmp *= total_io;
 		second_cmp *= pending_io_sum;
-		second_cmp *= gr_prior_sum;
 
 
 
