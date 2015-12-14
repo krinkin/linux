@@ -47,19 +47,20 @@ static void bird_merged_requests(struct request_queue *q, struct request *rq,
 	}
 }
 
+static int first_cmp;
+static int second_cmp;
 static int bird_dispatch(struct request_queue *q, int force)
 {
 	struct bird_data *nd = q->elevator->elevator_data;
+	int prior_sum = 0;
+	int local_sum = 0;
+	int pending_io_sum = 0;
+	int prior_iterator = 0;
+	int gr_prior_sum = 0;
+	first_cmp = 0;
+	second_cmp = 0;
 
 	if (!list_empty(&nd->queue)) {
-		int prior_sum = 0;
-		int local_sum = 0;
-		int pending_io_sum = 0;
-		int prior_iterator = 0;
-		int gr_prior_sum = 0;
-		long long first_cmp = 0;
-		long long second_cmp = 0;
-		int curr_prior = 0;
 	
 		struct request *rq;
 		char diskname[DISK_NAME_LEN+1];
@@ -84,14 +85,12 @@ static int bird_dispatch(struct request_queue *q, int force)
 			}
 		}
 
-
 		first_cmp = local_sum;
 		first_cmp *= prior_sum;
 		
 		second_cmp = gr_prior_sum;
 		second_cmp *= pending_io_sum;
-		second_cmp *= priority[nd->instance_id];
-
+		second_cmp *= gr_prior_sum;
 
 
 
