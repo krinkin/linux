@@ -17,7 +17,6 @@ struct bird_data {
 static int local_io[23];
 static int pending_io[23];
 static int priority[23];
-static int lock_io[23];
 static int group_id[23];
 
 
@@ -113,7 +112,7 @@ static int bird_dispatch(struct request_queue *q, int force)
 
 		if (local_io[nd->instance_id] % 100 == 0){
 			if (local_io[nd->instance_id] <= 50000){
-				printk(KERN_INFO "Local io [%d] %d From %s Total io %d pending_io = %d Prior=%d PriorSum = %d LocalSum = %d Grpr = %d\n", nd->instance_id, local_io[nd->instance_id], diskname, total_io, pending_io[nd->instance_id], priority[nd->instance_id], prior_sum, local_sum, gr_prior_sum);
+				printk(KERN_INFO "Local io [%d] %d From %s Total io %d pending_io = %d Prior=%d PriorSum = %d LocalSum = %d Grpr = %d fst=%d snd=%d\n", nd->instance_id, local_io[nd->instance_id], diskname, total_io, pending_io[nd->instance_id], priority[nd->instance_id], prior_sum, local_sum, gr_prior_sum, first_cmp, second_cmp);
 
 			}			
 		}
