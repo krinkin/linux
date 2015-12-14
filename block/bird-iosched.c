@@ -49,6 +49,8 @@ static void bird_merged_requests(struct request_queue *q, struct request *rq,
 
 static int first_cmp;
 static int second_cmp;
+static int timerPrior = 1;
+
 static int bird_dispatch(struct request_queue *q, int force)
 {
 	struct bird_data *nd = q->elevator->elevator_data;
@@ -59,6 +61,11 @@ static int bird_dispatch(struct request_queue *q, int force)
 	int gr_prior_sum = 0;
 	first_cmp = 0;
 	second_cmp = 0;
+	timerPrior -= 1;
+
+	if (timerPrior <= 0)
+		timerPrior = instances;
+	
 
 	if (!list_empty(&nd->queue)) {
 	
@@ -107,6 +114,7 @@ static int bird_dispatch(struct request_queue *q, int force)
 		if (local_io[nd->instance_id] % 100 == 0){
 			if (local_io[nd->instance_id] <= 50000){
 				printk(KERN_INFO "Local io [%d] %d From %s Total io %d pending_io = %d Prior=%d PriorSum = %d LocalSum = %d Grpr = %d\n", nd->instance_id, local_io[nd->instance_id], diskname, total_io, pending_io[nd->instance_id], priority[nd->instance_id], prior_sum, local_sum, gr_prior_sum);
+
 			}			
 		}
 		return 1;
@@ -159,8 +167,8 @@ static int bird_init_queue(struct request_queue *q, struct elevator_type *e)
 		return -ENOMEM;
 	}
 	
-	local_io[nd->instance_id] = 0;
 	nd->instance_id = instances;
+	local_io[nd->instance_id] = 0;
 	priority[nd->instance_id] = (instances+1)*2;
 	group_id[nd->instance_id] = instances;
 	pending_io[nd->instance_id] = 0;
