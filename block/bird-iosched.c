@@ -57,8 +57,9 @@ static int bird_dispatch(struct request_queue *q, int force)
 		int pending_io_sum = 0;
 		int prior_iterator = 0;
 		int gr_prior_sum = 0;
-		int first_cmp;
-		int second_cmp;
+		long long first_cmp = 0;
+		long long second_cmp = 0;
+		int curr_prior = 0;
 	
 		struct request *rq;
 		char diskname[DISK_NAME_LEN+1];
@@ -83,11 +84,14 @@ static int bird_dispatch(struct request_queue *q, int force)
 			}
 		}
 
+
 		first_cmp = local_sum;
 		first_cmp *= prior_sum;
 		
 		second_cmp = gr_prior_sum;
 		second_cmp *= pending_io_sum;
+		second_cmp *= priority[nd->instance_id];
+
 
 
 
