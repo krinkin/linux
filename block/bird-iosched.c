@@ -82,9 +82,6 @@ static int bird_dispatch(struct request_queue *q, int force)
 			if (pending_io[prior_iterator] > 0){
 				prior_sum += priority[prior_iterator];
 			}
-		}
-		
-		for (prior_iterator = 0; prior_iterator < instances; ++prior_iterator){
 			pending_io_sum += pending_io[prior_iterator];
 		}
 
@@ -92,25 +89,24 @@ static int bird_dispatch(struct request_queue *q, int force)
 			if (group_id[prior_iterator] == group_id[nd->instance_id]){
 				local_sum += local_io[prior_iterator];
 				group_pending_sum +=	 pending_io[prior_iterator];
-			}
-		}
-		
-		for (prior_iterator = 0; prior_iterator < instances; ++prior_iterator){
-			if (group_id[prior_iterator] == group_id[nd->instance_id]){
 				gr_prior_sum  += priority[prior_iterator];
 			}
 		}
 
 		first_cmp = local_sum;
-		first_cmp *= pending_io_sum;
 		first_cmp *= prior_sum;
 		
 		
 		second_cmp = gr_prior_sum;
 		second_cmp *= total_io;
-		second_cmp *= pending_io_sum;
 
+		bird_strncpy(diskname, rq->rq_disk ? rq->rq_disk->disk_name : "unknown", sizeof(diskname)-1);
+		diskname[sizeof(diskname)-1] = '\0';
 
+		if (first_cmp > second_cmp){
+			printk(KERN_INFO "FAILED Local io [%d] %d From %s Total io %d pending_io = %d Prior=%d PriorSum = %d LocalSum = %d Grpr = %d fst=%d snd=%d\n", nd->instance_id, local_io[nd->instance_id], diskname, total_io, pending_io[nd->instance_id], priority[nd->instance_id], prior_sum, local_sum, gr_prior_sum, first_cmp, second_cmp);
+			blk_delay_queue(q, 100);
+		}
 
 		rq = list_entry(nd->queue.next, struct request, queuelist);
 		list_del_init(&rq->queuelist);
@@ -119,8 +115,7 @@ static int bird_dispatch(struct request_queue *q, int force)
 		total_io += 1;
 		pending_io[nd->instance_id] -= 1;
 
-		bird_strncpy(diskname, rq->rq_disk ? rq->rq_disk->disk_name : "unknown", sizeof(diskname)-1);
-		diskname[sizeof(diskname)-1] = '\0';
+
 
 		if (local_io[nd->instance_id] % 100 == 0){
 			if (local_io[nd->instance_id] <= 50000){
