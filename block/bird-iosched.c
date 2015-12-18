@@ -48,8 +48,9 @@ static void bird_merged_requests(struct request_queue *q, struct request *rq,
 
 static int first_cmp;
 static int second_cmp;
-static int timerFirstValue = 1000;
+static int timerFirstValue = 1;
 static int timerPrior = 1;
+#define _MAXIMUM(x,y) ((x) < (y) ? (y) : (x))
 
 static int bird_dispatch(struct request_queue *q, int force)
 {
@@ -66,16 +67,16 @@ static int bird_dispatch(struct request_queue *q, int force)
 
 	if (timerPrior <= 0){
 		timerPrior = timerFirstValue;
-		total_io = 0;
+		total_io = _MAXIMUM(0, total_io - timerFirstValue);
 		for (prior_iterator = 0; prior_iterator < instances; ++prior_iterator){
-			local_io[prior_iterator] = 0;
+			local_io[prior_iterator] = _MAXIMUM(0, local_io[prior_iterator]-1);
 		}
 	}
 	
-
-	if (!list_empty(&nd->queue)) {
 	
 		struct request *rq;
+
+	if (!list_empty(&nd->queue)) {
 		char diskname[DISK_NAME_LEN+1];
 
 		for (prior_iterator = 0; prior_iterator < instances; ++prior_iterator){
@@ -100,12 +101,9 @@ static int bird_dispatch(struct request_queue *q, int force)
 		second_cmp = gr_prior_sum;
 		second_cmp *= total_io;
 
-		bird_strncpy(diskname, rq->rq_disk ? rq->rq_disk->disk_name : "unknown", sizeof(diskname)-1);
-		diskname[sizeof(diskname)-1] = '\0';
-
 		if (first_cmp > second_cmp){
-			printk(KERN_INFO "FAILED Local io [%d] %d From %s Total io %d pending_io = %d Prior=%d PriorSum = %d LocalSum = %d Grpr = %d fst=%d snd=%d\n", nd->instance_id, local_io[nd->instance_id], diskname, total_io, pending_io[nd->instance_id], priority[nd->instance_id], prior_sum, local_sum, gr_prior_sum, first_cmp, second_cmp);
-			blk_delay_queue(q, 100);
+			printk(KERN_INFO "FAILED Local io [%d] %d From UNKNOWN Total io %d pending_io = %d Prior=%d PriorSum = %d LocalSum = %d Grpr = %d fst=%d snd=%d\n", nd->instance_id, local_io[nd->instance_id], total_io, pending_io[nd->instance_id], priority[nd->instance_id], prior_sum, local_sum, gr_prior_sum, first_cmp, second_cmp);
+			//blk_delay_queue(q, 100);
 		}
 
 		rq = list_entry(nd->queue.next, struct request, queuelist);
@@ -115,6 +113,8 @@ static int bird_dispatch(struct request_queue *q, int force)
 		total_io += 1;
 		pending_io[nd->instance_id] -= 1;
 
+		bird_strncpy(diskname, rq->rq_disk ? rq->rq_disk->disk_name : "unknown", sizeof(diskname)-1);
+		diskname[sizeof(diskname)-1] = '\0';
 
 
 		if (local_io[nd->instance_id] % 100 == 0){
