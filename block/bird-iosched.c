@@ -48,8 +48,9 @@ static void bird_merged_requests(struct request_queue *q, struct request *rq,
 
 static int first_cmp;
 static int second_cmp;
-static int timerFirstValue = 1;
-static int timerPrior = 1;
+static int timerFirstValue = 100;
+static int timerPrior = 2000;
+static int preview = -1;
 #define _MAXIMUM(x,y) ((x) < (y) ? (y) : (x))
 
 static int bird_dispatch(struct request_queue *q, int force)
@@ -67,9 +68,9 @@ static int bird_dispatch(struct request_queue *q, int force)
 
 	if (timerPrior <= 0){
 		timerPrior = timerFirstValue;
-		total_io = _MAXIMUM(0, total_io - timerFirstValue);
+		total_io = 0;
 		for (prior_iterator = 0; prior_iterator < instances; ++prior_iterator){
-			local_io[prior_iterator] = _MAXIMUM(0, local_io[prior_iterator]-1);
+			local_io[prior_iterator] = 0;
 		}
 	}
 	
@@ -82,17 +83,13 @@ static int bird_dispatch(struct request_queue *q, int force)
 		for (prior_iterator = 0; prior_iterator < instances; ++prior_iterator){
 			if (pending_io[prior_iterator] > 0){
 				prior_sum += priority[prior_iterator];
+				pending_io_sum += pending_io[prior_iterator];
 			}
-			pending_io_sum += pending_io[prior_iterator];
 		}
 
-		for (prior_iterator = 0; prior_iterator < instances; ++prior_iterator){
-			if (group_id[prior_iterator] == group_id[nd->instance_id]){
-				local_sum += local_io[prior_iterator];
-				group_pending_sum +=	 pending_io[prior_iterator];
-				gr_prior_sum  += priority[prior_iterator];
-			}
-		}
+		local_sum = local_io[nd->instance_id];
+		group_pending_sum =	 pending_io[nd->instance_id];
+		gr_prior_sum  = priority[nd->instance_id];
 
 		first_cmp = local_sum;
 		first_cmp *= prior_sum;
@@ -101,11 +98,16 @@ static int bird_dispatch(struct request_queue *q, int force)
 		second_cmp = gr_prior_sum;
 		second_cmp *= total_io;
 
-		if (first_cmp > second_cmp){
-			printk(KERN_INFO "FAILED Local io [%d] %d From UNKNOWN Total io %d pending_io = %d Prior=%d PriorSum = %d LocalSum = %d Grpr = %d fst=%d snd=%d\n", nd->instance_id, local_io[nd->instance_id], total_io, pending_io[nd->instance_id], priority[nd->instance_id], prior_sum, local_sum, gr_prior_sum, first_cmp, second_cmp);
-			//blk_delay_queue(q, 100);
+		if ((first_cmp > second_cmp) && (timerPrior <= timerFirstValue)) {
+			if (preview == nd->instance_id){
+				//printk(KERN_INFO "BREAK Local io [%d] %d From UNKNOWN Total io %d pending_io = %d Prior=%d PriorSum = %d LocalSum = %d Grpr = %d fst=%d snd=%d\n", nd->instance_id, local_io[nd->instance_id], total_io, pending_io[nd->instance_id], priority[nd->instance_id], prior_sum, local_sum, gr_prior_sum, first_cmp, second_cmp);
+				return 0;
+			}
+			else{
+				//printk(KERN_INFO "CONTINUE Local io [%d] %d From UNKNOWN Total io %d pending_io = %d Prior=%d PriorSum = %d LocalSum = %d Grpr = %d fst=%d snd=%d\n", nd->instance_id, local_io[nd->instance_id], total_io, pending_io[nd->instance_id], priority[nd->instance_id], prior_sum, local_sum, gr_prior_sum, first_cmp, second_cmp);
+			}
 		}
-
+		preview = nd->instance_id;
 		rq = list_entry(nd->queue.next, struct request, queuelist);
 		list_del_init(&rq->queuelist);
 		elv_dispatch_sort(q, rq);
@@ -125,7 +127,7 @@ static int bird_dispatch(struct request_queue *q, int force)
 		}
 		return 1;
 	}
-	
+	preview = nd->instance_id;
 	return 0;
 }
 
