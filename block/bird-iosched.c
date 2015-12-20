@@ -49,7 +49,7 @@ static void bird_merged_requests(struct request_queue *q, struct request *rq,
 static int first_cmp;
 static int second_cmp;
 static int timerFirstValue = 100;
-static int timerPrior = 2000;
+static int timerPrior = 1;
 static int preview = -1;
 #define _MAXIMUM(x,y) ((x) < (y) ? (y) : (x))
 
@@ -62,6 +62,7 @@ static int bird_dispatch(struct request_queue *q, int force)
 	int prior_iterator = 0;
 	int gr_prior_sum = 0;
 	int group_pending_sum = 0;
+	int cntActive = 0;
 	first_cmp = 0;
 	second_cmp = 0;
 	timerPrior -= 1;
@@ -85,6 +86,7 @@ static int bird_dispatch(struct request_queue *q, int force)
 		for (prior_iterator = 0; prior_iterator < instances; ++prior_iterator){
 			if (pending_io[prior_iterator] > 0){
 				prior_sum += priority[prior_iterator];
+				cntActive += 1;
 			}
 			pending_io_sum += pending_io[prior_iterator];
 		}
@@ -104,9 +106,9 @@ static int bird_dispatch(struct request_queue *q, int force)
 		second_cmp = gr_prior_sum;
 		second_cmp *= total_io;
 
-		if ((first_cmp > second_cmp) && (preview == nd->instance_id) && (timerPrior < timerFirstValue)){
-			printk(KERN_INFO "FAILED Local io [%d] %d From UNKNOWN Total io %d pending_io = %d Prior=%d PriorSum = %d LocalSum = %d Grpr = %d fst=%d snd=%d\n", nd->instance_id, local_io[nd->instance_id], total_io, pending_io[nd->instance_id], priority[nd->instance_id], prior_sum, local_sum, gr_prior_sum, first_cmp, second_cmp);
-			//blk_delay_queue(q, 100);
+		if ((first_cmp > second_cmp) && (preview == nd->instance_id) && (cntActive > 1)){
+//			printk(KERN_INFO "FAILED Local io [%d] %d From UNKNOWN Total io %d pending_io = %d Prior=%d PriorSum = %d LocalSum = %d Grpr = %d fst=%d snd=%d\n", nd->instance_id, local_io[nd->instance_id], total_io, pending_io[nd->instance_id], priority[nd->instance_id], prior_sum, local_sum, gr_prior_sum, first_cmp, second_cmp);
+			blk_delay_queue(q, 10);		
 		}
 		preview = nd->instance_id;
 
@@ -123,7 +125,7 @@ static int bird_dispatch(struct request_queue *q, int force)
 
 		if (local_io[nd->instance_id] % 100 == 0){
 			if (local_io[nd->instance_id] <= 50000){
-				printk(KERN_INFO "Local io [%d] %d From %s Total io %d pending_io = %d Prior=%d PriorSum = %d LocalSum = %d Grpr = %d fst=%d snd=%d\n", nd->instance_id, local_io[nd->instance_id], diskname, total_io, pending_io[nd->instance_id], priority[nd->instance_id], prior_sum, local_sum, gr_prior_sum, first_cmp, second_cmp);
+				printk(KERN_INFO "Local io [%d] %d From %s Total io %d pending_io = %d Prior=%d PriorSum = %d LocalSum = %d Grpr = %d fst=%d snd=%d Timer=%d\n", nd->instance_id, local_io[nd->instance_id], diskname, total_io, pending_io[nd->instance_id], priority[nd->instance_id], prior_sum, local_sum, gr_prior_sum, first_cmp, second_cmp, timerPrior);
 
 			}			
 		}
