@@ -48,10 +48,9 @@ static void bird_merged_requests(struct request_queue *q, struct request *rq,
 
 static int first_cmp;
 static int second_cmp;
-static int timerFirstValue = 100;
+static int timerFirstValue = 1000;
 static int timerPrior = 1;
 static int preview = -1;
-#define _MAXIMUM(x,y) ((x) < (y) ? (y) : (x))
 
 static int bird_dispatch(struct request_queue *q, int force)
 {
@@ -76,9 +75,7 @@ static int bird_dispatch(struct request_queue *q, int force)
 		}
 	}
 	
-	
-	
-		struct request *rq;
+	struct request *rq;
 
 	if (!list_empty(&nd->queue)) {
 		char diskname[DISK_NAME_LEN+1];
