@@ -46,8 +46,6 @@ static void bird_merged_requests(struct request_queue *q, struct request *rq,
 	}
 }
 
-static int first_cmp;
-static int second_cmp;
 static int timerFirstValue = 1000;
 static int timerPrior = 1;
 static int preview = -1;
@@ -62,8 +60,8 @@ static int bird_dispatch(struct request_queue *q, int force)
 	int gr_prior_sum = 0;
 	int group_pending_sum = 0;
 	int cntActive = 0;
-	first_cmp = 0;
-	second_cmp = 0;
+	int first_cmp = 0;
+	int second_cmp = 0;
 	timerPrior -= 1;
 
 
