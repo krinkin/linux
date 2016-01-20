@@ -1,0 +1,15 @@
+[global]                
+
+runtime=3600              
+
+filename=/home/vagrant/disk/random-read.0.0
+
+size=128m               
+io_size=20g
+
+[rand-rw]               
+ioengine=libaio         
+iodepth=32               
+rw=randwrite            
+bs=4k                   
+direct=1   
