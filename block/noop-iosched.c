@@ -15,6 +15,8 @@ struct noop_data {
 	
 };
 
+static struct request_queue *priority_queue =NULL;
+
 static void noop_merged_requests(struct request_queue *q, struct request *rq,
 				 struct request *next)
 {
@@ -25,11 +27,16 @@ static int noop_dispatch(struct request_queue *q, int force)
 {
 	struct noop_data *nd = q->elevator->elevator_data;
 
+	if(priority_queue != q)
+		blk_delay_queue(q, 1);
+
 	if (!list_empty(&nd->queue)) {
 		struct request *rq;
 		rq = list_entry(nd->queue.next, struct request, queuelist);
 		list_del_init(&rq->queuelist);
 		elv_dispatch_sort(q, rq);
+
+			
 		return 1;
 	}
 	return 0;
@@ -46,11 +53,11 @@ static void noop_add_request(struct request_queue *q, struct request *rq)
 	struct noop_data *nd = q->elevator->elevator_data;
 
 
-	if(!strcmp(diskname,"sda"))
-		sda++;
-	if(!strcmp(diskname,"sdb"))
-		sdb++;
-	counter ++;
+//	if(!strcmp(diskname,"sda"))
+//		sda++;
+//	if(!strcmp(diskname,"sdb"))
+//		sdb++;
+//	counter ++;
 
 //	if(0 == (counter%1000))
 //		printk(KERN_ALERT "io-sched: [noop] %d %d %d :current_q:%p\n",counter, sda, sdb, q);
@@ -101,6 +108,10 @@ static int noop_init_queue(struct request_queue *q, struct elevator_type *e)
 
 	spin_lock_irq(q->queue_lock);
 	q->elevator = eq;
+
+	if(!priority_queue)
+		priority_queue = q;
+
 	spin_unlock_irq(q->queue_lock);
 	return 0;
 }

@@ -1,8 +1,8 @@
 [global]                
 
-runtime=3600              
+runtime=30              
 
-filename=/home/vagrant/disk/random-read.0.0
+filename=/opt/disk/f
 
 size=128m               
 io_size=20g
