@@ -77,8 +77,42 @@ static ssize_t show_bird_priority(struct device *dev,
 	return sprintf(buf, "%ld\n", priority[nd->instance_id]);
 }
  
+
+static ssize_t store_bird_group(struct device *dev,
+                                       struct device_attribute *attr,
+                                       const char *buf,
+                                       size_t count)
+{
+	struct gendisk *disk = dev_to_disk(dev);
+	struct request_queue *q = disk->queue;
+	struct bird_data *nd = q->elevator->elevator_data;
+	ssize_t ret;
+	long snooze;
+
+        ret = sscanf(buf, "%ld", &snooze);
+        if (ret != 1)
+                 return -EINVAL;
+
+	group_id[nd->instance_id] = snooze;
+        return count;
+}
+ 
+static ssize_t show_bird_group(struct device *dev,
+                                     struct device_attribute *attr,
+                                     char *buf)
+{
+	struct gendisk *disk = dev_to_disk(dev);
+	struct request_queue *q = disk->queue;
+	struct bird_data *nd = q->elevator->elevator_data;
+
+	return sprintf(buf, "%ld\n", group_id[nd->instance_id]);
+}
+
+
 static DEVICE_ATTR(bird_priority, 0644, show_bird_priority,
                     store_bird_priority);
+static DEVICE_ATTR(bird_group, 0644, show_bird_group,
+                    store_bird_group);
 
 
 static int timerFirstValue = 1000;
@@ -153,6 +187,7 @@ static int bird_dispatch(struct request_queue *q, int force)
 			struct device *ddev = disk_to_dev(rq->rq_disk);
 
 			device_create_file(ddev, &dev_attr_bird_priority);
+			device_create_file(ddev, &dev_attr_bird_group);
 			intialized[nd->instance_id] = 1;
 		}
 		bird_strncpy(diskname, rq->rq_disk ? rq->rq_disk->disk_name : "unknown", sizeof(diskname)-1);
