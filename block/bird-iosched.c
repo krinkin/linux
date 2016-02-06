@@ -52,14 +52,20 @@ static ssize_t store_bird_priority(struct device *dev,
                                        const char *buf,
                                        size_t count)
 {
+	struct gendisk *disk = dev_to_disk(dev);
+	struct request_queue *q = disk->queue;
+	struct bird_data *nd = q->elevator->elevator_data;
+	ssize_t ret;
+	long snooze;
          //struct cpu *cpu = container_of(dev, struct cpu, dev);
 //         ssize_t ret;
 //         long snooze;
  //
-   //      ret = sscanf(buf, "%ld", &snooze);
-     //    if (ret != 1)
-       //          return -EINVAL;
- 
+        ret = sscanf(buf, "%ld", &snooze);
+        if (ret != 1)
+                 return -EINVAL;
+
+	priority[nd->instance_id] = snooze;
 //         per_cpu(smt_snooze_delay, cpu->dev.id) = snooze;
          return count;
 }
@@ -71,9 +77,7 @@ static ssize_t show_bird_priority(struct device *dev,
 	struct gendisk *disk = dev_to_disk(dev);
 	struct request_queue *q = disk->queue;
 	struct bird_data *nd = q->elevator->elevator_data;
-         //struct cpu *cpu = container_of(dev, struct cpu, dev);
- 
-         //return sprintf(buf, "%ld\n", per_cpu(smt_snooze_delay, cpu->dev.id));
+
 	return sprintf(buf, "%ld\n", priority[nd->instance_id]);
 }
  
