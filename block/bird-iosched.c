@@ -62,6 +62,7 @@ static int bird_dispatch(struct request_queue *q, int force)
 	int cntActive = 0;
 	int first_cmp = 0;
 	int second_cmp = 0;
+	struct request *rq;
 	timerPrior -= 1;
 
 
@@ -72,8 +73,6 @@ static int bird_dispatch(struct request_queue *q, int force)
 			local_io[prior_iterator] = 0;
 		}
 	}
-	
-	struct request *rq;
 
 	if (!list_empty(&nd->queue)) {
 		char diskname[DISK_NAME_LEN+1];
@@ -214,13 +213,52 @@ static struct elevator_type elevator_bird = {
 	.elevator_owner = THIS_MODULE,
 };
 
+static int foo;
+ 
+static ssize_t foo_show(struct kobject * kobj, struct kobj_attribute * attr, char * buf)
+{
+ return sprintf(buf, "%dn", foo);
+}
+ 
+static ssize_t foo_store(struct kobject * kobj, struct kobj_attribute * attr, const char * buf, size_t count)
+{
+ sscanf(buf, "%du", &foo);
+ return count;
+}
+
+static struct kobj_attribute foo_attribute = __ATTR(foo, 0666, foo_show, foo_store);
+ 
+static struct attribute * attrs [] =
+{
+ &foo_attribute.attr,
+ NULL,
+};
+ 
+static struct attribute_group attr_group = {
+ .attrs = attrs,
+};
+
+static struct kobject *ex_kobj;
+
 static int __init bird_init(void)
 {
+	int retval;
+	ex_kobj = kobject_create_and_add("bird", kernel_kobj);
+	if(!ex_kobj)
+		return ENOMEM;
+ 
+	retval = sysfs_create_group(ex_kobj, &attr_group);
+	if(retval)
+	{
+		kobject_put(ex_kobj);
+		return retval;
+	}
 	return elv_register(&elevator_bird);
 }
 
 static void __exit bird_exit(void)
 {
+	kobject_put(ex_kobj);
 	elv_unregister(&elevator_bird);
 }
 
