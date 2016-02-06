@@ -57,17 +57,13 @@ static ssize_t store_bird_priority(struct device *dev,
 	struct bird_data *nd = q->elevator->elevator_data;
 	ssize_t ret;
 	long snooze;
-         //struct cpu *cpu = container_of(dev, struct cpu, dev);
-//         ssize_t ret;
-//         long snooze;
- //
+
         ret = sscanf(buf, "%ld", &snooze);
         if (ret != 1)
                  return -EINVAL;
 
 	priority[nd->instance_id] = snooze;
-//         per_cpu(smt_snooze_delay, cpu->dev.id) = snooze;
-         return count;
+        return count;
 }
  
 static ssize_t show_bird_priority(struct device *dev,
