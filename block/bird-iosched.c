@@ -68,10 +68,13 @@ static ssize_t show_bird_priority(struct device *dev,
                                      struct device_attribute *attr,
                                      char *buf)
 {
+	struct gendisk *disk = dev_to_disk(dev);
+	struct request_queue *q = disk->queue;
+	struct bird_data *nd = q->elevator->elevator_data;
          //struct cpu *cpu = container_of(dev, struct cpu, dev);
  
          //return sprintf(buf, "%ld\n", per_cpu(smt_snooze_delay, cpu->dev.id));
-	return sprintf(buf, "%ld\n", 5);
+	return sprintf(buf, "%ld\n", priority[nd->instance_id]);
 }
  
 static DEVICE_ATTR(bird_priority, 0644, show_bird_priority,
