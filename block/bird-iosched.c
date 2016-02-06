@@ -18,6 +18,7 @@ static int local_io[23];
 static int pending_io[23];
 static int priority[23];
 static int group_id[23];
+static int intialized[23];
 
 
 static int total_io = 0;
@@ -45,6 +46,37 @@ static void bird_merged_requests(struct request_queue *q, struct request *rq,
 		pending_io[nd->instance_id] -= 1;
 	}
 }
+
+static ssize_t store_bird_priority(struct device *dev,
+                                       struct device_attribute *attr,
+                                       const char *buf,
+                                       size_t count)
+{
+         //struct cpu *cpu = container_of(dev, struct cpu, dev);
+//         ssize_t ret;
+//         long snooze;
+ //
+   //      ret = sscanf(buf, "%ld", &snooze);
+     //    if (ret != 1)
+       //          return -EINVAL;
+ 
+//         per_cpu(smt_snooze_delay, cpu->dev.id) = snooze;
+         return count;
+}
+ 
+static ssize_t show_bird_priority(struct device *dev,
+                                     struct device_attribute *attr,
+                                     char *buf)
+{
+         //struct cpu *cpu = container_of(dev, struct cpu, dev);
+ 
+         //return sprintf(buf, "%ld\n", per_cpu(smt_snooze_delay, cpu->dev.id));
+	return sprintf(buf, "%ld\n", 5);
+}
+ 
+static DEVICE_ATTR(bird_priority, 0644, show_bird_priority,
+                    store_bird_priority);
+
 
 static int timerFirstValue = 1000;
 static int timerPrior = 1;
@@ -112,7 +144,14 @@ static int bird_dispatch(struct request_queue *q, int force)
 		local_io[nd->instance_id] += 1;
 		total_io += 1;
 		pending_io[nd->instance_id] -= 1;
+		
+		if (!intialized[nd->instance_id] && rq->rq_disk)
+		{
+			struct device *ddev = disk_to_dev(rq->rq_disk);
 
+			device_create_file(ddev, &dev_attr_bird_priority);
+			intialized[nd->instance_id] = 1;
+		}
 		bird_strncpy(diskname, rq->rq_disk ? rq->rq_disk->disk_name : "unknown", sizeof(diskname)-1);
 		diskname[sizeof(diskname)-1] = '\0';
 
@@ -179,6 +218,7 @@ static int bird_init_queue(struct request_queue *q, struct elevator_type *e)
 	priority[nd->instance_id] = (instances+1)*12;
 	group_id[nd->instance_id] = instances;
 	pending_io[nd->instance_id] = 0;
+	intialized[nd->instance_id] = 0;
 	instances++;
 	
 	eq->elevator_data = nd;
@@ -213,52 +253,13 @@ static struct elevator_type elevator_bird = {
 	.elevator_owner = THIS_MODULE,
 };
 
-static int foo;
- 
-static ssize_t foo_show(struct kobject * kobj, struct kobj_attribute * attr, char * buf)
-{
- return sprintf(buf, "%dn", foo);
-}
- 
-static ssize_t foo_store(struct kobject * kobj, struct kobj_attribute * attr, const char * buf, size_t count)
-{
- sscanf(buf, "%du", &foo);
- return count;
-}
-
-static struct kobj_attribute foo_attribute = __ATTR(foo, 0666, foo_show, foo_store);
- 
-static struct attribute * attrs [] =
-{
- &foo_attribute.attr,
- NULL,
-};
- 
-static struct attribute_group attr_group = {
- .attrs = attrs,
-};
-
-static struct kobject *ex_kobj;
-
 static int __init bird_init(void)
 {
-	int retval;
-	ex_kobj = kobject_create_and_add("bird", kernel_kobj);
-	if(!ex_kobj)
-		return ENOMEM;
- 
-	retval = sysfs_create_group(ex_kobj, &attr_group);
-	if(retval)
-	{
-		kobject_put(ex_kobj);
-		return retval;
-	}
 	return elv_register(&elevator_bird);
 }
 
 static void __exit bird_exit(void)
 {
-	kobject_put(ex_kobj);
 	elv_unregister(&elevator_bird);
 }
 
