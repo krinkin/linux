@@ -12,13 +12,13 @@
 struct bird_data {
 	struct list_head queue;
 	int instance_id;
+	int intialized;
 };
 
 static int local_io[23];
 static int pending_io[23];
 static int priority[23];
 static int group_id[23];
-static int intialized[23];
 
 
 static int total_io = 0;
@@ -196,14 +196,14 @@ static int bird_dispatch(struct request_queue *q, int force)
 		total_io += 1;
 		pending_io[nd->instance_id] -= 1;
 		
-		if (!intialized[nd->instance_id] && rq->rq_disk)
+		if (!(nd->intialized) && rq->rq_disk)
 		{
 			struct device *ddev = disk_to_dev(rq->rq_disk);
 
 			device_create_file(ddev, &dev_attr_bird_priority);
 			device_create_file(ddev, &dev_attr_bird_group);
 			device_create_file(ddev, &dev_attr_bird_stat);
-			intialized[nd->instance_id] = 1;
+			nd->intialized = 1;
 		}
 		bird_strncpy(diskname, rq->rq_disk ? rq->rq_disk->disk_name : "unknown", sizeof(diskname)-1);
 		diskname[sizeof(diskname)-1] = '\0';
@@ -267,11 +267,11 @@ static int bird_init_queue(struct request_queue *q, struct elevator_type *e)
 	}
 	
 	nd->instance_id = instances;
+	nd->intialized = 0;
 	local_io[nd->instance_id] = 0;
 	priority[nd->instance_id] = (instances+1)*12;
 	group_id[nd->instance_id] = instances;
 	pending_io[nd->instance_id] = 0;
-	intialized[nd->instance_id] = 0;
 	instances++;
 	
 	eq->elevator_data = nd;
