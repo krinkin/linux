@@ -56,9 +56,9 @@ static ssize_t store_bird_priority(struct device *dev,
 	struct request_queue *q = disk->queue;
 	struct bird_data *nd = q->elevator->elevator_data;
 	ssize_t ret;
-	long snooze;
+	int snooze;
 
-        ret = sscanf(buf, "%ld", &snooze);
+        ret = sscanf(buf, "%d", &snooze);
         if (ret != 1)
                  return -EINVAL;
 
@@ -74,7 +74,7 @@ static ssize_t show_bird_priority(struct device *dev,
 	struct request_queue *q = disk->queue;
 	struct bird_data *nd = q->elevator->elevator_data;
 
-	return sprintf(buf, "%ld\n", priority[nd->instance_id]);
+	return sprintf(buf, "%d\n", priority[nd->instance_id]);
 }
  
 
@@ -87,9 +87,9 @@ static ssize_t store_bird_group(struct device *dev,
 	struct request_queue *q = disk->queue;
 	struct bird_data *nd = q->elevator->elevator_data;
 	ssize_t ret;
-	long snooze;
+	int snooze;
 
-        ret = sscanf(buf, "%ld", &snooze);
+        ret = sscanf(buf, "%d", &snooze);
         if (ret != 1)
                  return -EINVAL;
 
@@ -105,7 +105,7 @@ static ssize_t show_bird_group(struct device *dev,
 	struct request_queue *q = disk->queue;
 	struct bird_data *nd = q->elevator->elevator_data;
 
-	return sprintf(buf, "%ld\n", group_id[nd->instance_id]);
+	return sprintf(buf, "%d\n", group_id[nd->instance_id]);
 }
 
 
@@ -113,6 +113,20 @@ static DEVICE_ATTR(bird_priority, 0644, show_bird_priority,
                     store_bird_priority);
 static DEVICE_ATTR(bird_group, 0644, show_bird_group,
                     store_bird_group);
+
+static ssize_t show_bird_stat(struct device *dev,
+                                     struct device_attribute *attr,
+                                     char *buf)
+{
+	struct gendisk *disk = dev_to_disk(dev);
+	struct request_queue *q = disk->queue;
+	struct bird_data *nd = q->elevator->elevator_data;
+
+	return sprintf(buf, "Group Id = %d\nPrior = %d\nLocal = %d\nTotal = %d\nPending = %d\n", group_id[nd->instance_id], priority[nd->instance_id], local_io[nd->instance_id], total_io, pending_io[nd->instance_id]);
+}
+
+static DEVICE_ATTR(bird_stat, 0444, show_bird_stat,
+                    NULL);
 
 
 static int timerFirstValue = 1000;
@@ -188,6 +202,7 @@ static int bird_dispatch(struct request_queue *q, int force)
 
 			device_create_file(ddev, &dev_attr_bird_priority);
 			device_create_file(ddev, &dev_attr_bird_group);
+			device_create_file(ddev, &dev_attr_bird_stat);
 			intialized[nd->instance_id] = 1;
 		}
 		bird_strncpy(diskname, rq->rq_disk ? rq->rq_disk->disk_name : "unknown", sizeof(diskname)-1);
