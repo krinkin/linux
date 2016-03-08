@@ -1,15 +1,15 @@
 [global]                
 
-runtime=30              
+runtime=30 
 
-filename=/home/vagrant/disk/dev/sdDISKNAME/f
+filename=DISKNAME
 
 size=128m               
-io_size=20g
+io_size=10g
 
 [rand-rw]               
 ioengine=libaio         
 iodepth=32               
 rw=randwrite            
-bs=4k                   
+bs=4k 
 direct=1   

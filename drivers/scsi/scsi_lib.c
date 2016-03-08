@@ -1895,8 +1895,8 @@ static void scsi_request_fn(struct request_queue *q)
 		}
 		spin_lock_irq(q->queue_lock);
 		
-		if(0== (counter%3000))
-			printk(KERN_ALERT "io-sched: counter %d/%d, first %d, second %d\n", counter, c_first+c_second, c_first, c_second);
+//		if(0== (counter%3000))
+//			printk(KERN_ALERT "io-sched: counter %d/%d, first %d, second %d\n", counter, c_first+c_second, c_first, c_second);
 	}
 
 	return;

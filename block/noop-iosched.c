@@ -8,7 +8,7 @@
 #include <linux/slab.h>
 #include <linux/init.h>
 
-
+#define ADJUSTED_BLK_QUEUE_DELAY 250
 
 struct noop_data {
 	struct list_head queue;
@@ -27,8 +27,6 @@ static int noop_dispatch(struct request_queue *q, int force)
 {
 	struct noop_data *nd = q->elevator->elevator_data;
 
-	if(priority_queue != q)
-		blk_delay_queue(q, 1);
 
 	if (!list_empty(&nd->queue)) {
 		struct request *rq;
@@ -36,11 +34,15 @@ static int noop_dispatch(struct request_queue *q, int force)
 		list_del_init(&rq->queuelist);
 		elv_dispatch_sort(q, rq);
 
+	if(priority_queue != q)
+		blk_delay_queue(q, ADJUSTED_BLK_QUEUE_DELAY);
 			
 		return 1;
 	}
 	return 0;
 }
+
+
 
 static void noop_add_request(struct request_queue *q, struct request *rq)
 {
@@ -52,20 +54,23 @@ static void noop_add_request(struct request_queue *q, struct request *rq)
 
 	struct noop_data *nd = q->elevator->elevator_data;
 
+	if(!priority_queue)
+		priority_queue = q;
 
 //	if(!strcmp(diskname,"sda"))
 //		sda++;
 //	if(!strcmp(diskname,"sdb"))
 //		sdb++;
-//	counter ++;
+	counter ++;
 
-//	if(0 == (counter%1000))
-//		printk(KERN_ALERT "io-sched: [noop] %d %d %d :current_q:%p\n",counter, sda, sdb, q);
+	if(0 == (counter%10000))
+		printk(KERN_ALERT "io-sched:curq:[%s]:%p priq:%p\n", diskname, q, priority_queue);
 
 	if(counter >=500000)
 		counter = 0;
 
 	list_add_tail(&rq->queuelist, &nd->queue);
+
 }
 
 static struct request *
@@ -108,9 +113,6 @@ static int noop_init_queue(struct request_queue *q, struct elevator_type *e)
 
 	spin_lock_irq(q->queue_lock);
 	q->elevator = eq;
-
-	if(!priority_queue)
-		priority_queue = q;
 
 	spin_unlock_irq(q->queue_lock);
 	return 0;
