@@ -7,10 +7,13 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/init.h>
+#include <linux/timer.h>
 
 #define ADJUSTED_BLK_QUEUE_DELAY 250
 #define SCHED_MAXIMUM_QUEUES 256
 #define SCHED_MAXIMUM_NAME 10
+
+static void schedule_timer(void);
 
 struct noop_data {
 	struct list_head queue;
@@ -30,17 +33,20 @@ static struct {
 	int    queues;
         struct QUEUE_INFO queue_set[SCHED_MAXIMUM_QUEUES];
 	
-
+	int    clocks;
+	
 } sched_attrs;
 
 struct kobject *ksched;
+
+static struct timer_list sched_timer;
 
 static ssize_t status_show(struct kobject *ko, struct kobj_attribute *at, char *buff) {
 	// I hope that I fit to PAGE_SIZE
 
 	int i=0;
 	char line[100];
-	sprintf(buff,"OK, queues=%d\n",sched_attrs.queues);
+	sprintf(buff,"OK, CLK= %d, queues=%d\n",sched_attrs.clocks,sched_attrs.queues);
 
 	for(i=0; i<sched_attrs.queues; i++) {
 		sprintf(line,"%s: %p\n",sched_attrs.queue_set[i].name,sched_attrs.queue_set[i].rq);
@@ -67,7 +73,7 @@ static ssize_t ratio_store(struct kobject *kobj, struct kobj_attribute *attr,
 {
 	int ret;
 
-	ret = kstrtoint(buff, 16, &sched_attrs.ratio);
+	ret = kstrtoint(buff, 10, &sched_attrs.ratio);
 
 	return (ret<0) ? ret : count;
 }
@@ -77,7 +83,7 @@ static ssize_t timeout_store(struct kobject *kobj, struct kobj_attribute *attr,
 {
 	int ret;
 
-	ret = kstrtoint(buff, 16, &sched_attrs.timeout);
+	ret = kstrtoint(buff, 10, &sched_attrs.timeout);
 
 	return (ret<0) ? ret : count;
 }
@@ -117,9 +123,6 @@ static int noop_dispatch(struct request_queue *q, int force)
 		rq = list_entry(nd->queue.next, struct request, queuelist);
 		list_del_init(&rq->queuelist);
 		elv_dispatch_sort(q, rq);
-
-//	if(priority_queue != q)
-//		blk_delay_queue(q, ADJUSTED_BLK_QUEUE_DELAY);
 			
 		return 1;
 	}
@@ -130,29 +133,7 @@ static int noop_dispatch(struct request_queue *q, int force)
 
 static void noop_add_request(struct request_queue *q, struct request *rq)
 {
-//	static int counter = 0;
-//	static int sda = 0;
-  //      static int sdb = 0;
-
-//	const char* diskname = (rq->rq_disk)->disk_name;
-
 	struct noop_data *nd = q->elevator->elevator_data;
-
-//	if(!priority_queue)
-//		priority_queue = q;
-
-//	if(!strcmp(diskname,"sda"))
-//		sda++;
-//	if(!strcmp(diskname,"sdb"))
-//		sdb++;
-//	counter ++;
-
-//	if(0 == (counter%10000))
-//		printk(KERN_ALERT "io-sched:curq:[%s]:%p priq:%p\n", diskname, q, priority_queue);
-
-//	if(counter >=500000)
-//		counter = 0;
-
 	list_add_tail(&rq->queuelist, &nd->queue);
 
 }
@@ -239,10 +220,30 @@ int blk_register_queue_group_schedule(struct request_queue* q, const char *name)
 	sched_attrs.queues++;
 }
 
+static void schedule_io(unsigned long data) {
+	sched_attrs.clocks ++;
+	schedule_timer();
+}
+
+static void schedule_timer(void) {
+
+	sched_timer.expires = jiffies + sched_attrs.timeout;
+	sched_timer.data = 0;
+	sched_timer.function = schedule_io;
+	add_timer(&sched_timer);
+}
+
 
 static int __init noop_init(void)
 {
 	init_sys_objs();
+	init_timer(&sched_timer);
+
+	sched_attrs.timeout = 5000;
+	sched_attrs.ratio   = 10;
+
+	schedule_timer();
+
 	return elv_register(&elevator_noop);
 }
 
