@@ -16,7 +16,8 @@
 static void schedule_timer(void);
 
 struct noop_data {
-	struct list_head queue;
+	struct 	list_head queue;
+	bool 	delay; 
 };
 
 
@@ -24,12 +25,16 @@ struct QUEUE_INFO {
 	struct request_queue *rq;
 	char name[SCHED_MAXIMUM_NAME];
 	bool priority;
+	bool delay;
+	int  iostat;
 };
 
 static struct {
 
 	int timeout;
 	int ratio;
+	int iototal;
+	int ioratio;
 
 	int    queues;
         struct QUEUE_INFO queue_set[SCHED_MAXIMUM_QUEUES];
@@ -47,12 +52,17 @@ static ssize_t status_show(struct kobject *ko, struct kobj_attribute *at, char *
 
 	int i=0;
 	char line[100];
-	sprintf(buff,"OK, CLK= %d, queues=%d\n",sched_attrs.clocks,sched_attrs.queues);
+	sprintf(buff,"OK, CLK= %d, iototal=%d ioratio=%d queues=%d\n",
+		sched_attrs.clocks, 
+		sched_attrs.iototal, 
+		sched_attrs.ioratio,
+		sched_attrs.queues);
 
 	for(i=0; i<sched_attrs.queues; i++) {
-		sprintf(line,"%s: %s %p\n",
+		sprintf(line,"%s: %s %d %p\n",
 			sched_attrs.queue_set[i].name,
 			(sched_attrs.queue_set[i].priority ? "HIG" : "LOW"),
+			sched_attrs.queue_set[i].iostat,	
 			sched_attrs.queue_set[i].rq);
 		strcat(buff,line);
 	}
@@ -137,6 +147,12 @@ static void noop_merged_requests(struct request_queue *q, struct request *rq,
 static int noop_dispatch(struct request_queue *q, int force)
 {
 	struct noop_data *nd = q->elevator->elevator_data;
+	
+	if( nd->delay ) {
+		nd->delay = false;
+		blk_delay_queue(q, sched_attrs.timeout/2);
+		return 0;
+	}
 
 
 	if (!list_empty(&nd->queue)) {
@@ -149,8 +165,6 @@ static int noop_dispatch(struct request_queue *q, int force)
 	}
 	return 0;
 }
-
-
 
 static void noop_add_request(struct request_queue *q, struct request *rq)
 {
@@ -242,6 +256,34 @@ int blk_register_queue_group_schedule(struct request_queue* q, const char *name)
 }
 
 static void schedule_io(unsigned long data) {
+	
+
+	int i = 0;
+	int total = 0;
+	int priority = 0;
+        struct noop_data *nd = NULL;
+
+	for(i=0; i< sched_attrs.queues; i++) {
+		
+ 		sched_attrs.queue_set[i].iostat = sched_attrs.queue_set[i].rq->nr_pending;	
+
+		total += sched_attrs.queue_set[i].iostat; 
+		if( sched_attrs.queue_set[i].priority )
+		    priority = sched_attrs.queue_set[i].rq->nr_pending;		
+	}
+
+	sched_attrs.iototal = total;
+
+	if( total>0 &&  ( (priority*100)/total < sched_attrs.ratio )) {
+		
+		sched_attrs.ioratio = (priority*100)/total; 
+
+		for(i=0; i< sched_attrs.queues; i++) {
+			nd = sched_attrs.queue_set[i].rq->elevator->elevator_data;
+			nd->delay = !sched_attrs.queue_set[i].priority; 
+		}
+	}
+			
 	sched_attrs.clocks ++;
 	schedule_timer();
 }
@@ -260,8 +302,8 @@ static int __init noop_init(void)
 	init_sys_objs();
 	init_timer(&sched_timer);
 
-	sched_attrs.timeout = 1000;
-	sched_attrs.ratio   = 10;
+	sched_attrs.timeout = 3000;
+	sched_attrs.ratio   = 90;
 
 	schedule_timer();
 
