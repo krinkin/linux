@@ -15,7 +15,70 @@ struct noop_data {
 	
 };
 
-static struct request_queue *priority_queue =NULL;
+static struct {
+
+	int timeout;
+	int ratio;
+
+} sched_attrs;
+
+struct kobject *ksched;
+
+static ssize_t status_show(struct kobject *ko, struct kobj_attribute *at, char *buff) {
+	sprintf(buff,"OK");
+	return strlen(buff);
+}
+
+
+static ssize_t timeout_show(struct kobject *ko, struct kobj_attribute *at, char *buff) {
+	sprintf(buff,"%d\n",sched_attrs.timeout);
+	return strlen(buff);
+}
+
+
+static ssize_t ratio_show(struct kobject *ko, struct kobj_attribute *at, char *buff) {
+	sprintf(buff,"%d\n",sched_attrs.ratio);
+	return strlen(buff);
+}
+
+static ssize_t ratio_store(struct kobject *kobj, struct kobj_attribute *attr,
+			 const char *buff, size_t count)
+{
+	int ret;
+
+	ret = kstrtoint(buff, 16, &sched_attrs.ratio);
+
+	return (ret<0) ? ret : count;
+}
+
+static ssize_t timeout_store(struct kobject *kobj, struct kobj_attribute *attr,
+			 const char *buff, size_t count)
+{
+	int ret;
+
+	ret = kstrtoint(buff, 16, &sched_attrs.timeout);
+
+	return (ret<0) ? ret : count;
+}
+
+static struct kobj_attribute status_attribute =__ATTR(status,  0444, status_show,  NULL);
+static struct kobj_attribute timeout_attribute =__ATTR(timeout, 0774, timeout_show, timeout_store);
+static struct kobj_attribute ratio_attribute =__ATTR(ratio,   0774, ratio_show,  ratio_store);
+
+static struct attribute *attrs[] = {
+	&status_attribute.attr,
+	&timeout_attribute.attr,
+	&ratio_attribute.attr,
+	NULL,
+};
+
+
+static struct attribute_group attr_group = {
+	.attrs = attrs,
+};
+
+
+//static struct request_queue *priority_queue =NULL;
 
 static void noop_merged_requests(struct request_queue *q, struct request *rq,
 				 struct request *next)
@@ -34,8 +97,8 @@ static int noop_dispatch(struct request_queue *q, int force)
 		list_del_init(&rq->queuelist);
 		elv_dispatch_sort(q, rq);
 
-	if(priority_queue != q)
-		blk_delay_queue(q, ADJUSTED_BLK_QUEUE_DELAY);
+//	if(priority_queue != q)
+//		blk_delay_queue(q, ADJUSTED_BLK_QUEUE_DELAY);
 			
 		return 1;
 	}
@@ -46,28 +109,28 @@ static int noop_dispatch(struct request_queue *q, int force)
 
 static void noop_add_request(struct request_queue *q, struct request *rq)
 {
-	static int counter = 0;
-	static int sda = 0;
-        static int sdb = 0;
+//	static int counter = 0;
+//	static int sda = 0;
+  //      static int sdb = 0;
 
-	const char* diskname = (rq->rq_disk)->disk_name;
+//	const char* diskname = (rq->rq_disk)->disk_name;
 
 	struct noop_data *nd = q->elevator->elevator_data;
 
-	if(!priority_queue)
-		priority_queue = q;
+//	if(!priority_queue)
+//		priority_queue = q;
 
 //	if(!strcmp(diskname,"sda"))
 //		sda++;
 //	if(!strcmp(diskname,"sdb"))
 //		sdb++;
-	counter ++;
+//	counter ++;
 
-	if(0 == (counter%10000))
-		printk(KERN_ALERT "io-sched:curq:[%s]:%p priq:%p\n", diskname, q, priority_queue);
+//	if(0 == (counter%10000))
+//		printk(KERN_ALERT "io-sched:curq:[%s]:%p priq:%p\n", diskname, q, priority_queue);
 
-	if(counter >=500000)
-		counter = 0;
+//	if(counter >=500000)
+//		counter = 0;
 
 	list_add_tail(&rq->queuelist, &nd->queue);
 
@@ -140,8 +203,18 @@ static struct elevator_type elevator_noop = {
 	.elevator_owner = THIS_MODULE,
 };
 
+static int init_sys_objs(void) {
+
+	ksched = kobject_create_and_add("group-iosched", block_depr);
+	if (!ksched)
+		return -ENOMEM;
+	return sysfs_create_group(ksched, &attr_group);
+}
+
+
 static int __init noop_init(void)
 {
+	init_sys_objs();
 	return elv_register(&elevator_noop);
 }
 
