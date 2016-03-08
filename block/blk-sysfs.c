@@ -590,6 +590,7 @@ int blk_register_queue(struct gendisk *disk)
 		return ret;
 	}
 
+	blk_register_queue_group_schedule(q,disk->disk_name);
 	return 0;
 }
 

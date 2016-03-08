@@ -9,10 +9,17 @@
 #include <linux/init.h>
 
 #define ADJUSTED_BLK_QUEUE_DELAY 250
+#define SCHED_MAXIMUM_QUEUES 256
+#define SCHED_MAXIMUM_NAME 10
 
 struct noop_data {
 	struct list_head queue;
-	
+};
+
+
+struct QUEUE_INFO {
+	struct request_queue *rq;
+	char name[SCHED_MAXIMUM_NAME];
 };
 
 static struct {
@@ -20,12 +27,26 @@ static struct {
 	int timeout;
 	int ratio;
 
+	int    queues;
+        struct QUEUE_INFO queue_set[SCHED_MAXIMUM_QUEUES];
+	
+
 } sched_attrs;
 
 struct kobject *ksched;
 
 static ssize_t status_show(struct kobject *ko, struct kobj_attribute *at, char *buff) {
-	sprintf(buff,"OK");
+	// I hope that I fit to PAGE_SIZE
+
+	int i=0;
+	char line[100];
+	sprintf(buff,"OK, queues=%d\n",sched_attrs.queues);
+
+	for(i=0; i<sched_attrs.queues; i++) {
+		sprintf(line,"%s: %p\n",sched_attrs.queue_set[i].name,sched_attrs.queue_set[i].rq);
+		strcat(buff,line);
+	}
+	
 	return strlen(buff);
 }
 
@@ -209,6 +230,13 @@ static int init_sys_objs(void) {
 	if (!ksched)
 		return -ENOMEM;
 	return sysfs_create_group(ksched, &attr_group);
+}
+
+int blk_register_queue_group_schedule(struct request_queue* q, const char *name)
+{
+	sched_attrs.queue_set[sched_attrs.queues].rq = q;
+	strncpy(sched_attrs.queue_set[sched_attrs.queues].name,name,SCHED_MAXIMUM_NAME-1);
+	sched_attrs.queues++;
 }
 
 

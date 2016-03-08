@@ -760,6 +760,7 @@ static inline void rq_flush_dcache_pages(struct request *rq)
 #endif
 
 extern int blk_register_queue(struct gendisk *disk);
+extern int blk_register_queue_group_schedule(struct request_queue* q, const char *name);
 extern void blk_unregister_queue(struct gendisk *disk);
 extern void generic_make_request(struct bio *bio);
 extern void blk_rq_init(struct request_queue *q, struct request *rq);
