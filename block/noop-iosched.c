@@ -12,6 +12,27 @@ struct noop_data {
 	struct list_head queue;
 };
 
+struct kobject *ksched;
+
+static ssize_t status_show(struct kobject *ko, struct kobj_attribute *at, char *buff) {
+	sprintf(buff,"OK");
+	return strlen(buff);
+}
+
+
+
+static struct kobj_attribute status_attribute =__ATTR(status, 0444, status_show, NULL);
+
+static struct attribute *attrs[] = {
+	&status_attribute.attr,
+	NULL,
+};
+
+
+static struct attribute_group attr_group = {
+	.attrs = attrs,
+};
+
 static void noop_merged_requests(struct request_queue *q, struct request *rq,
 				 struct request *next)
 {
@@ -105,8 +126,18 @@ static struct elevator_type elevator_noop = {
 	.elevator_owner = THIS_MODULE,
 };
 
+
+static int init_sys_objs(void) {
+
+	ksched = kobject_create_and_add("group-iosched", block_depr);
+	if (!ksched)
+		return -ENOMEM;
+	return sysfs_create_group(ksched, &attr_group);
+}
+
 static int __init noop_init(void)
 {
+	init_sys_objs();
 	return elv_register(&elevator_noop);
 }
 
