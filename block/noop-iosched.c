@@ -23,6 +23,7 @@ struct noop_data {
 struct QUEUE_INFO {
 	struct request_queue *rq;
 	char name[SCHED_MAXIMUM_NAME];
+	bool priority;
 };
 
 static struct {
@@ -49,7 +50,10 @@ static ssize_t status_show(struct kobject *ko, struct kobj_attribute *at, char *
 	sprintf(buff,"OK, CLK= %d, queues=%d\n",sched_attrs.clocks,sched_attrs.queues);
 
 	for(i=0; i<sched_attrs.queues; i++) {
-		sprintf(line,"%s: %p\n",sched_attrs.queue_set[i].name,sched_attrs.queue_set[i].rq);
+		sprintf(line,"%s: %s %p\n",
+			sched_attrs.queue_set[i].name,
+			(sched_attrs.queue_set[i].priority ? "HIG" : "LOW"),
+			sched_attrs.queue_set[i].rq);
 		strcat(buff,line);
 	}
 	
@@ -88,14 +92,31 @@ static ssize_t timeout_store(struct kobject *kobj, struct kobj_attribute *attr,
 	return (ret<0) ? ret : count;
 }
 
-static struct kobj_attribute status_attribute =__ATTR(status,  0444, status_show,  NULL);
-static struct kobj_attribute timeout_attribute =__ATTR(timeout, 0774, timeout_show, timeout_store);
-static struct kobj_attribute ratio_attribute =__ATTR(ratio,   0774, ratio_show,  ratio_store);
+static ssize_t priority_store(struct kobject *kobj, struct kobj_attribute *attr,
+			 const char *buff, size_t count)
+{
+	int i =0;
+	
+	for(i=0; i<sched_attrs.queues; i++)
+	{
+		if( !strncmp( sched_attrs.queue_set[i].name,buff,3) )
+			     sched_attrs.queue_set[i].priority = true;
+		else
+			     sched_attrs.queue_set[i].priority = false;
+	}
+	return count;
+}
+
+static struct kobj_attribute status_attribute 	=__ATTR(status,   0444, status_show,  NULL);
+static struct kobj_attribute timeout_attribute 	=__ATTR(timeout,  0774, timeout_show, timeout_store);
+static struct kobj_attribute ratio_attribute 	=__ATTR(ratio,    0774, ratio_show,  ratio_store);
+static struct kobj_attribute priority_attribute	=__ATTR(priority, 0220, NULL, priority_store);
 
 static struct attribute *attrs[] = {
 	&status_attribute.attr,
 	&timeout_attribute.attr,
 	&ratio_attribute.attr,
+	&priority_attribute.attr,
 	NULL,
 };
 
@@ -239,7 +260,7 @@ static int __init noop_init(void)
 	init_sys_objs();
 	init_timer(&sched_timer);
 
-	sched_attrs.timeout = 5000;
+	sched_attrs.timeout = 1000;
 	sched_attrs.ratio   = 10;
 
 	schedule_timer();
